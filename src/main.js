@@ -352,10 +352,7 @@ const DEFAULT_HOTKEYS = {
   seekBack: 'Left',
   seekFwd: 'Right',
   prevPart: 'Alt+Up',
-  nextPart: 'Alt+Down',
-  toggleVisible: 'Alt+H',
-  togglePass: 'Alt+L',
-  toggleOpacity: 'Alt+O'
+  nextPart: 'Alt+Down'
 };
 
 const HOTKEY_META = [
@@ -363,10 +360,7 @@ const HOTKEY_META = [
   { key: 'seekBack', label: '后退 5 秒' },
   { key: 'seekFwd', label: '前进 5 秒' },
   { key: 'prevPart', label: '上一分 P' },
-  { key: 'nextPart', label: '下一分 P' },
-  { key: 'toggleVisible', label: '隐藏 / 显示浮窗' },
-  { key: 'togglePass', label: '鼠标穿透 开 / 关' },
-  { key: 'toggleOpacity', label: '半透明 开 / 关' }
+  { key: 'nextPart', label: '下一分 P' }
 ];
 
 const DEFAULT_SETTINGS = {
@@ -722,9 +716,7 @@ function sendPlayerAction(action) {
 
 /** 热键动作的唯一入口：键盘加速器和鼠标侧键都走这里 */
 function handleHotkey(key) {
-  if (key === 'toggleVisible') return toggleVisible();
-  if (key === 'togglePass') return setPass(!settings.clickThrough);
-  if (key === 'toggleOpacity') return setOpacity(settings.opacity > 0.95 ? 0.65 : 1);
+  // 只保留 5 个播放/切P热键；隐藏、穿透、半透明不再绑热键（功能本身仍由窗口按钮/IPC 保留）。
   sendPlayerAction(key);
 }
 

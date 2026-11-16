@@ -1,7 +1,7 @@
 {
   "name": "genshin-route-buddy",
   "productName": "胡桃助手",
-  "version": "0.2.5",
+  "version": "1.0.0",
   "description": "胡桃助手：B 站攻略视频悬浮窗，置顶于原神之上，全局热键控制播放",
   "main": "src/main.js",
   "author": "FinalLawer",
