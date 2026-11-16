@@ -1,0 +1,686 @@
+/* 启动器（console）深色液态玻璃主题
+   保留 console.js 依赖的全部 class/id：#elevBanner/#elevBannerText/
+   #btnElevate/#url/#btnLaunch/#videoMeta/#hkState/#btnResetHk/#hkList/
+   .hk-row/.label/.kbd/.key/#toast/.elevate-btn/.sel/.primary 等
+   面板统一为深色半透明玻璃 + 白字，坏 GPU 下仍通透清晰
+*/
+
+:root {
+  /* UI 透明度（0~1）：默认 0.12，近乎全透，让背景图充分透出。
+     所有玻璃面板的 alpha 统一走 --ui-alpha。 */
+  --ui-alpha: 0.12;
+  --chrome: rgb(28 22 40 / var(--ui-alpha));    /* 顶栏玻璃：深紫红调，不灰 */
+  --bg: 0 0 0 0;
+  --surface: rgb(30 22 44 / var(--ui-alpha));   /* 卡片玻璃：深紫红调，不灰 */
+  --surface-2: rgb(36 27 52 / var(--ui-alpha)); /* 输入框 */
+  --surface-3: rgb(40 30 58 / var(--ui-alpha)); /* 键帽 */
+  --stroke: rgba(255, 255, 255, 0.3);
+  --stroke-2: rgba(12, 16, 28, 0.5);
+  --fg: #ffffff;
+  --fg-2: rgba(255, 255, 255, 0.96);
+  --dim: rgba(255, 255, 255, 0.8);
+  --dim-2: rgba(255, 255, 255, 0.62);
+  --accent: #3b7bff;
+  --accent-hi: #5b8bff;
+  --accent-soft: rgba(59, 123, 255, 0.28);
+  --on-accent: #ffffff;
+  --green: #22c55e;
+  --warn: #f59e0b;
+  --danger: #ef4444;
+  --r: 8px;
+  --r-lg: 12px;
+  --page-w: 920px;
+  --page-pad: 34px;
+  --sb: 9px;
+  --glass-blur: 24px;      /* 加大模糊 */
+  --glass-sat: 1.8;        /* 高饱和度，颜色不发灰 */
+  --shadow: 0 2px 10px rgba(0, 0, 0, 0.18), 0 14px 30px rgba(0, 0, 0, 0.22);
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 13px;
+  color: var(--fg);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* 背景：图片打底 + 纯色兜底；暗角/高亮由 #shell::before 的渐变叠在上面。
+   用户选过背景图时 JS 只改 --bg-img 变量，渐变层不受影响。 */
+body {
+  background-color: #1b1e28;
+  background-image: var(--bg-img, url("assets/bg.webp"));
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+/* 背景：提亮 + 中心高亮 + 四周暗角，同时留一丝暗化保证玻璃文字可读 */
+#shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  /* 中心径向高亮打亮人物 → 四周线性暗角 */
+  background:
+    radial-gradient(120% 90% at 50% 38%, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.05) 45%, rgba(0, 0, 0, 0) 62%),
+    linear-gradient(180deg, rgba(200, 210, 255, 0.16), rgba(15, 18, 26, 0.05) 42%, rgba(15, 18, 26, 0.12) 80%, rgba(8, 10, 16, 0.20));
+  pointer-events: none;
+}
+/* 额外四角暗角（暗淡，仅压一下边缘避免发灰、不显眼） */
+#shell::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(150% 120% at 50% 44%, rgba(0, 0, 0, 0) 62%, rgba(0, 0, 0, 0.14) 100%);
+}
+
+#shell { position: relative; display: flex; flex-direction: column; height: 100vh; z-index: 1; }
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+button {
+  font: inherit;
+  color: var(--fg);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.14);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-radius: var(--r);
+  height: 32px;
+  padding: 0 14px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+button:hover { background: rgba(255, 255, 255, 0.22); }
+button:active { transform: translateY(0.5px); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+button.primary {
+  min-width: 104px;
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--on-accent);
+  font-weight: 600;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: 0 4px 14px rgba(59, 123, 255, 0.35);
+}
+button.primary:hover { background: var(--accent-hi); }
+
+button.ghost { background: transparent; }
+button.ghost:hover { background: rgba(255, 255, 255, 0.16); }
+
+button.tiny { height: 26px; padding: 0 10px; font-size: 11.5px; }
+button.small { height: 28px; padding: 0 11px; font-size: 12px; }
+
+/* ---------- 背景图按钮 ---------- */
+.bg-btn {
+  flex: none;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 16px;
+  background: rgba(20, 24, 34, 0.5);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: var(--fg);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* ---------- 顶栏 ---------- */
+.topbar {
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 148px 0 14px;   /* 右留 WCO 系统按钮 */
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.10) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  ), var(--chrome);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(1.06);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(1.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26);
+  -webkit-app-region: drag;
+}
+.topbar button, .topbar select, .topbar input { -webkit-app-region: no-drag; }
+
+.ver { font-size: 11px; color: var(--dim-2); flex: none; text-shadow: 0 1px 2px rgba(0,0,0,.45); }
+
+/* ---------- 提权横幅 ---------- */
+.global-notes { padding: 10px 20px 0; }
+.elev-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 190, 60, 0.5);
+  background: rgba(120, 80, 10, 0.6);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: #ffe6a8;
+  border-radius: var(--r);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.elev-banner[hidden] { display: none; }
+#elevBannerText { flex: 1; }
+.elevate-btn { flex: none; background: rgba(180, 120, 20, 0.5); border-color: rgba(255, 190, 60, 0.5); }
+.elevate-btn:hover { background: rgba(200, 140, 30, 0.6); }
+
+/* ---------- 内容区：两栏 ---------- */
+.content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 18px;
+  padding: 20px var(--page-pad) 12px;
+  overflow: hidden;
+}
+
+.pane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+.pane > * { width: 100%; }
+
+/* ---------- 卡片（深色液态玻璃：高模糊+高饱和+10%高光+1px厚边+边缘折射） ---------- */
+.card, .group-card {
+  position: relative;
+  background: linear-gradient(
+    150deg,
+    rgba(255, 255, 255, 0.10) 0%,        /* 顶部白高光 10% */
+    rgba(255, 255, 255, 0.03) 32%,
+    rgba(255, 255, 255, 0) 55%,
+    rgba(255, 255, 255, 0.02) 100%
+  ), var(--surface);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(1.06);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(1.06);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-top-color: rgba(255, 255, 255, 0.45);   /* 上缘更亮，厚度感 */
+  border-left-color: rgba(255, 255, 255, 0.32);
+  border-radius: var(--r-lg);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),         /* 1px 厚边 */
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),     /* 顶部内侧高光 */
+    inset 0 -12px 24px rgba(0, 0, 0, 0.18),      /* 底部内影，厚度 */
+    var(--shadow);
+  align-self: flex-start;
+  overflow: hidden;
+}
+/* 边缘折射：卡片外描一道高光亮边，模拟玻璃切面反光 */
+.card::before, .group-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.45) 0%,
+    rgba(255, 255, 255, 0.06) 30%,
+    rgba(255, 255, 255, 0.02) 55%,
+    rgba(255, 255, 255, 0.35) 100%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+/* 苹果液态玻璃：顶部月牙弧形高光（水珠反光带）+ 左上高光点 */
+.card::after, .group-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    /* 左上高光点 */
+    radial-gradient(
+      circle at 16px 14px,
+      rgba(255, 255, 255, 0.34) 0%,
+      rgba(255, 255, 255, 0.10) 22%,
+      transparent 46%
+    ),
+    /* 顶部居中月牙弧形高光带 */
+    radial-gradient(
+      ellipse 68% 46% at 50% -24%,
+      rgba(255, 255, 255, 0.33) 0%,
+      rgba(255, 255, 255, 0.12) 38%,
+      transparent 62%
+    );
+  pointer-events: none;
+}
+
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* 视频跟跑标题下的登录提醒：红字、独占一行、轻微呼吸，提示不明显就等于没写 */
+.run-tip {
+  flex: 1 1 100%;
+  margin: 1px 0 0 27px;
+  padding-top: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #ff6b6b;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 14px rgba(255, 70, 70, 0.45);
+  animation: tipGlow 2.8s ease-in-out infinite;
+}
+
+@keyframes tipGlow {
+  0%, 100% { opacity: 0.86; }
+  50%      { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .run-tip { animation: none; opacity: 1; }
+}
+.card-head .icon { width: 18px; height: 18px; color: var(--accent-hi); }
+.card-head h2, .card-head h3 { margin: 0; font-size: 15px; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px 18px;
+}
+
+/* 左栏（视频跟跑） */
+.pane-home .card-body .txt {
+  height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--fg);
+  background: var(--surface-2);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--r);
+}
+.pane-home .card-body .txt::placeholder { color: rgba(255, 255, 255, 0.6); }
+.pane-home .card-body .txt:focus {
+  outline: none;
+  border-color: var(--accent-hi);
+  box-shadow: 0 0 0 2px rgba(91, 139, 255, 0.35);
+}
+
+.launch-row { display: flex; gap: 10px; align-items: center; }
+.launch-row .sel { flex: 1; }
+.launch-row .dd { flex: 1 1 auto; min-width: 0; }
+.launch-row .primary { flex: none; min-width: 110px; }
+
+/* ---------- 分 P 液态玻璃下拉 ----------
+   原生 <select> 的展开层是系统画的（白底方块），玻璃做不上去，
+   所以 #part 只留作数据源（sel-src 视觉隐藏），用户点的是这套 .dd。 */
+/* 用 id 提高特异性，压过后面 .sel 的 height/padding，保证不占位、不吃点击 */
+#part.sel-src {
+  position: absolute;
+  left: 0; top: 0;
+  width: 0; height: 0; min-width: 0;
+  margin: 0; padding: 0; border: 0;
+  opacity: 0; overflow: hidden; pointer-events: none;
+}
+
+.dd { position: relative; }
+
+.dd-btn {
+  -webkit-app-region: no-drag;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--r);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-top-color: rgba(255, 255, 255, 0.48);
+  border-left-color: rgba(255, 255, 255, 0.34);
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0.04) 34%, rgba(255, 255, 255, 0) 58%, rgba(255, 255, 255, 0.03) 100%),
+    rgb(24 20 38 / 0.55);
+  -webkit-backdrop-filter: blur(18px) saturate(1.7) brightness(1.06);
+  backdrop-filter: blur(18px) saturate(1.7) brightness(1.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.30), 0 6px 18px rgba(0, 0, 0, 0.22);
+  color: #fff;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.14s, background 0.14s, box-shadow 0.14s;
+}
+
+/* 顶部月牙弧形高光（水珠反光），与启动器其它玻璃面板同一套语言 */
+.dd-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 16px 12px, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0.08) 26%, transparent 50%),
+    radial-gradient(ellipse 70% 48% at 50% -28%, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.09) 42%, transparent 66%);
+}
+
+.dd-btn:hover { border-color: rgba(255, 255, 255, 0.45); }
+
+.dd-btn[disabled] { opacity: 0.55; cursor: default; }
+
+.dd-btn.open {
+  border-color: var(--accent-hi);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    0 0 0 1px rgba(120, 170, 255, 0.35),
+    0 8px 22px rgba(0, 0, 0, 0.28);
+}
+
+.dd-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  position: relative;
+  z-index: 1;
+}
+
+.dd-caret {
+  flex: none;
+  font-size: 10px;
+  opacity: 0.75;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.15s;
+}
+
+.dd-btn.open .dd-caret { transform: rotate(180deg); }
+
+.dd-menu {
+  /* 卡片上有 backdrop-filter + overflow:hidden，绝对定位的下拉会被卡片裁掉
+     （只剩两三行）。所以菜单在 JS 里挪到 <body> 末尾，用 fixed 定位按按钮和
+     底部红框之间的空间算高度。 */
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: auto;
+  width: auto;
+  z-index: 90;
+  max-height: 430px;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-top-color: rgba(255, 255, 255, 0.44);
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 30%, rgba(255, 255, 255, 0) 56%, rgba(255, 255, 255, 0.03) 100%),
+    rgb(22 18 34 / 0.82);
+  -webkit-backdrop-filter: blur(22px) saturate(1.8) brightness(1.05);
+  backdrop-filter: blur(22px) saturate(1.8) brightness(1.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), 0 18px 40px rgba(0, 0, 0, 0.45);
+  animation: ddIn 0.14s ease-out;
+}
+
+@keyframes ddIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.99); }
+  to   { opacity: 1; transform: none; }
+}
+
+.dd-menu[hidden] { display: none; }
+
+.dd-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+
+.dd-item:hover {
+  background: rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+/* 和浮窗分 P 菜单一致：P 号定宽，标题占满剩余、单行省略 */
+.dd-num {
+  flex: none;
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.dd-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.dd-item.cur .dd-num { color: #fff; }
+
+.dd-item.cur {
+  background: linear-gradient(150deg, rgba(120, 170, 255, 0.34), rgba(120, 170, 255, 0.14));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 0 0 1px rgba(140, 185, 255, 0.28);
+  color: #fff;
+  font-weight: 600;
+}
+
+.dd-menu::-webkit-scrollbar { width: 9px; }
+.dd-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 9px;
+}
+.part-prefix {
+  flex: none;
+  color: var(--fg-2);
+  font-size: 13px;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+}
+
+.sel {
+  height: 36px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--fg);
+  background: var(--surface-2);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--r);
+  cursor: pointer;
+  color-scheme: dark;   /* 原生下拉选项深色，玻璃下更协调 */
+}
+.sel option { color: #1f2329; }
+.sel:focus { outline: none; border-color: var(--accent-hi); }
+
+/* 透明度滑块行（已删除——UI 透明度功能移除） */
+
+.meta { font-size: 12px; color: var(--dim); line-height: 1.5; min-height: 15px; text-shadow: 0 1px 2px rgba(0,0,0,.4); }
+
+/* 右栏（全局快捷键） */
+.hk-head { justify-content: space-between; }
+.hk-head-right { display: flex; align-items: center; gap: 10px; }
+
+.hk-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: rgba(20, 24, 34, 0.5);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  font-size: 12px;
+  color: var(--fg);
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0,0,0,.4);
+}
+.hk-state::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.6); }
+.hk-state.ok { color: var(--fg); }
+.hk-state.ok::before { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.hk-state.bad::before { background: var(--warn); }
+
+.hk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: -4px;
+}
+.hk-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+}
+.hk-row:last-child { border-bottom: none; }
+.hk-row .label { color: var(--fg-2); font-size: 12.5px; text-shadow: 0 1px 2px rgba(0,0,0,.4); }
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  height: 32px;
+  margin-right: -6px;
+  padding: 0 6px;
+  border: none;
+  background: transparent;
+  font-size: 11.5px;
+  color: var(--dim);
+}
+.kbd:hover { background: transparent; }
+.kbd .key {
+  display: inline-flex;
+  align-items: center;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface-3);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  font-weight: 600;
+  font-size: 11.5px;
+  justify-content: center;
+}
+.kbd .plus { color: rgba(255, 255, 255, 0.7); font-size: 11px; }
+.kbd.capturing {
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--r);
+  padding: 0 10px;
+}
+.kbd.capturing .key, .kbd.capturing .plus {
+  background: transparent; border-color: transparent; color: #fff;
+}
+
+/* ---------- Toast ---------- */
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: 44px;
+  transform: translate(-50%, 12px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  background: rgba(24, 28, 40, 0.92);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 12.5px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s, transform 0.18s;
+  z-index: 50;
+  max-width: 70vw;
+}
+#toast::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex: none; }
+#toast.bad::before { background: var(--danger); }
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 760px) {
+  .content { flex-direction: column; overflow-y: auto; }
+  .pane { flex: none; overflow: visible; }
+  .hk-list { grid-template-columns: 1fr; }
+  .topbar { padding: 0 148px 0 12px; }
+  .ver { display: none; }
+}
+
+/* ---------- 免费开源声明（醒目红字，锁死不可改动/隐藏/移动） ---------- */
+.free-banner {
+  flex: 0 0 auto !important;
+  margin: 0 var(--page-pad) 14px !important;
+  padding: 10px 16px !important;
+  border-radius: 12px !important;
+  background: rgba(122, 10, 16, 0.6) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(1.4) !important;
+  backdrop-filter: blur(10px) saturate(1.4) !important;
+  border: 1px solid rgba(255, 90, 90, 0.5) !important;
+  box-shadow: 0 0 18px rgba(220, 38, 38, 0.3) !important;
+  text-align: center !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: none !important; /* 锁死：不可选中/拖动/交互 */
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  position: relative !important;   /* 锁死：不可被挪走定位 */
+  z-index: 50 !important;
+}
+.free-banner-text {
+  color: #ff5c5c !important;
+  font-weight: 700 !important;
+  font-size: 13.5px !important;
+  letter-spacing: 0.5px !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55) !important;
+}

@@ -1,0 +1,774 @@
+/* ============================================================================
+   跟跑浮窗 —— 压在游戏画面上的小播放器
+   ----------------------------------------------------------------------------
+   · 标题栏 30px + 控制条 34px 是定值：main.js 按「16:9 画面 + 64」算窗口高度，改了要同步；
+   · 图标是 index.html 里的内联 SVG，状态（播放中 / 静音）由 app.js 切 class；
+   · 强调蓝与启动器一致。
+   ========================================================================== */
+
+:root {
+  --bg: #0c0d11;
+  --bar: #14151b; /* 标题栏 / 控制条 / 地址栏 */
+  --line: rgba(255, 255, 255, 0.09);
+  --fg: #eceae6;
+  --fg-2: #c6c5cc;
+  --dim: #8d8d99;
+  --accent: #49b2fc;
+  --accent-soft: rgba(73, 178, 252, 0.16);
+  --on-accent: #0b2438; /* 蓝底上的文字 */
+  --danger: #ff6b6b;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  font-size: 12px;
+  user-select: none;
+  cursor: default;
+}
+
+.icon-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.ico {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+button {
+  font: inherit;
+}
+
+/* 键盘焦点才出现的描边；鼠标点击不出现 */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+#app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ---------------------------------------------------------------- 标题栏 */
+
+#titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  flex: 0 0 30px;
+  padding: 0 4px 0 10px;
+  background: var(--bar);
+  border-bottom: 1px solid var(--line);
+  -webkit-app-region: drag;
+  overflow: hidden;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+
+.brand .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(73, 178, 252, 0.18);
+}
+
+/* 片名是这条栏里最有用的信息，比品牌字更亮一档 */
+.vtitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg);
+  font-size: 11.5px;
+}
+
+.vtitle:not(:empty) {
+  padding-left: 9px;
+  border-left: 1px solid var(--line);
+}
+
+.tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  -webkit-app-region: no-drag;
+}
+
+/* 标题栏图标按钮 */
+.tb {
+  -webkit-app-region: no-drag;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 22px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--dim);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.tb:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--fg);
+}
+
+.tb.danger:hover {
+  background: #d13438;
+  color: #fff;
+}
+
+/* 把「功能按钮」和「窗口按钮」隔开一点，避免想点设置时误关窗口 */
+.tb-sep {
+  width: 1px;
+  height: 12px;
+  margin: 0 3px;
+  background: var(--line);
+}
+
+/* 原生 <select> 的展开列表由 Chromium/系统绘制：Windows 浅色主题下是白底，
+ * 而文字会继承 color。以前这里只给了近白的 var(--fg) + 半透明白背景，
+ * 结果就是「白底白字」完全看不清。color-scheme 让原生控件走深色，
+ * option 再显式给一遍深底浅字兜底，两者互相独立。 */
+.sel {
+  -webkit-app-region: no-drag;
+  max-width: 150px;
+  height: 22px;
+  margin-right: 2px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color-scheme: dark;
+  background: #23252c;
+  color: var(--fg);
+  font-size: 11px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.12s;
+}
+
+.sel:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.sel option {
+  background: #23252c;
+  color: var(--fg);
+}
+
+.sel option:checked {
+  background: #1f5f96;
+  color: #fff;
+}
+
+.sel.hidden {
+  display: none;
+}
+
+/* 分 P 入口：播放中隐藏、暂停/播完显现。按钮 + 自定义下拉面板 */
+#partFloat {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 42;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+#partFloat.hidden {
+  display: none;
+}
+
+/* 分 P 按钮本体（复用 .sel 的观感，做成紧凑胶囊 + 液态玻璃） */
+#partBtn.sel {
+  max-width: 170px;
+  margin: 0;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.03) 32%, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.02) 100%),
+    rgb(24 20 38 / 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-top-color: rgba(255, 255, 255, 0.42);
+  border-left-color: rgba(255, 255, 255, 0.30);
+  -webkit-backdrop-filter: blur(18px) saturate(1.7) brightness(1.06);
+  backdrop-filter: blur(18px) saturate(1.7) brightness(1.06);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  border-radius: 12px;
+  font-size: 11px;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.96);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  overflow: visible;
+  position: relative;
+}
+/* 顶部月牙弧形高光（水珠反光），与启动器液态玻璃一致 */
+#partBtn.sel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 12px 10px, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.09) 24%, transparent 48%),
+    radial-gradient(ellipse 70% 46% at 50% -26%, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0.10) 40%, transparent 64%);
+  pointer-events: none;
+}
+
+#partLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+
+#partBtn .caret {
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+/* 自定义下拉面板：液态玻璃暗色卡片，替代原生 select 弹层（排版更可控）
+   坏 GPU 下 backdrop-filter 会退化，所以玻璃质感不能只靠 blur：
+   底上叠了两层高光渐变 + 内描边，blur 失效时仍是通透的玻璃片而不是一块死黑。 */
+#partMenu {
+  position: absolute;
+  top: 30px;
+  right: 0;
+  min-width: 190px;
+  max-width: 300px;
+  max-height: 330px;
+  overflow-y: auto;
+  background:
+    radial-gradient(ellipse 80% 52% at 50% -30%, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0.10) 44%, transparent 68%),
+    linear-gradient(150deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 32%, rgba(255, 255, 255, 0) 58%, rgba(255, 255, 255, 0.03) 100%),
+    rgb(24 20 38 / 0.80);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-top-color: rgba(255, 255, 255, 0.46);
+  border-left-color: rgba(255, 255, 255, 0.30);
+  border-radius: 12px;
+  -webkit-backdrop-filter: blur(20px) saturate(1.8) brightness(1.06);
+  backdrop-filter: blur(20px) saturate(1.8) brightness(1.06);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.30),
+    0 12px 32px rgba(0, 0, 0, 0.5);
+  padding: 5px;
+  pointer-events: auto;
+  z-index: 43;
+  animation: partMenuIn 0.14s ease-out;
+}
+
+@keyframes partMenuIn {
+  from { opacity: 0; transform: translateY(-5px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+#partMenu.hidden {
+  display: none;
+}
+
+#partMenu .p-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.92);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  transition: background 0.12s, box-shadow 0.12s;
+}
+
+#partMenu .p-item:hover {
+  background: rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+/* 当前 P：玻璃强调色，不再是实心蓝块（实心块在半透明面板里很突兀） */
+#partMenu .p-item.cur {
+  background: linear-gradient(150deg, rgba(120, 170, 255, 0.36), rgba(120, 170, 255, 0.15));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.30), 0 0 0 1px rgba(140, 185, 255, 0.30);
+  color: #fff;
+  font-weight: 600;
+}
+
+#partMenu::-webkit-scrollbar {
+  width: 9px;
+}
+
+#partMenu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 9px;
+}
+
+#partMenu .p-item .p-num {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.78;
+  flex: none;
+}
+
+#partMenu .p-item .p-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------------------------ 按钮 */
+
+button.primary {
+  height: 26px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 5px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+button.primary:hover {
+  background: #6cc3ff;
+}
+
+button.ghost {
+  height: 26px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--fg-2);
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+button.ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--fg);
+}
+
+/* ---------------------------------------------------------------- 地址栏 */
+
+#urlbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--bar);
+  border-bottom: 1px solid var(--line);
+}
+
+#urlbar.hidden {
+  display: none;
+}
+
+#urlInput {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--fg);
+  font: inherit;
+  font-size: 11.5px;
+  outline: none;
+  user-select: text;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+#urlInput::placeholder {
+  color: #6f6f7b;
+}
+
+#urlInput:focus {
+  border-color: rgba(73, 178, 252, 0.6);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ------------------------------------------------------------------ 舞台 */
+
+#stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: #000;
+  display: flex;
+}
+
+#stage webview {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  border: 0;
+}
+
+#placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 16px;
+  text-align: center;
+  color: var(--dim);
+  background: radial-gradient(circle at 50% 42%, rgba(73, 178, 252, 0.08), transparent 62%), #0a0b0f;
+  pointer-events: none;
+  z-index: 2;
+}
+
+#placeholder.hidden {
+  display: none;
+}
+
+#placeholder .ph-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 6px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+#placeholder .ph-icon .ico {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.6;
+}
+
+#placeholder p {
+  font-size: 13px;
+  color: var(--fg);
+}
+
+#placeholder span {
+  font-size: 11px;
+  color: #6f6f7b;
+}
+
+/* ---------------------------------------------------------------- 控制条 */
+
+#controls {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 34px;
+  flex: 0 0 34px;
+  padding: 0 14px 0 8px;
+  background: var(--bar);
+  border-top: 1px solid var(--line);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+body:not(.ui) #controls {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
+.play {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 24px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.play:hover {
+  background: rgba(73, 178, 252, 0.3);
+}
+
+/* 播放三角是实心的，暂停两竖是粗描边 */
+.play .i-play {
+  fill: currentColor;
+  stroke-width: 1.2;
+}
+
+.play .i-pause {
+  stroke-width: 2.6;
+}
+
+/* 同一个按钮里放两枚图标，按状态只显示一枚（app.js 的 applyState 切 class） */
+.play .i-pause,
+.play.playing .i-play,
+.mini .i-mute,
+.mini.muted .i-volume {
+  display: none;
+}
+
+.play.playing .i-pause,
+.mini.muted .i-mute {
+  display: block;
+}
+
+.time {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+
+/* 可点区域 16px 高，看得见的轨道只有 3px，悬停时加粗到 5px */
+.progress {
+  position: relative;
+  flex: 1;
+  min-width: 30px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.progress::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.16);
+  transition: height 0.12s;
+}
+
+.bar {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 3px;
+  width: 0;
+  transform: translateY(-50%);
+  border-radius: 3px;
+  background: var(--accent);
+  transition: width 0.08s linear, height 0.12s;
+}
+
+.progress:hover::before,
+.progress.dragging::before,
+.progress:hover .bar,
+.progress.dragging .bar {
+  height: 5px;
+}
+
+.progress.dragging .bar {
+  transition: height 0.12s;
+}
+
+.knob {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 11px;
+  height: 11px;
+  margin-left: -5.5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  transform: translateY(-50%) scale(0);
+  transition: transform 0.12s, left 0.08s linear;
+}
+
+.progress:hover .knob,
+.progress.dragging .knob {
+  transform: translateY(-50%) scale(1);
+}
+
+.progress.dragging .knob {
+  transition: transform 0.12s;
+}
+
+.mini {
+  display: grid;
+  place-items: center;
+  min-width: 34px;
+  height: 22px;
+  flex: 0 0 auto;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fg-2);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.mini:hover {
+  background: rgba(255, 255, 255, 0.13);
+  color: var(--fg);
+}
+
+.mini.muted {
+  color: var(--danger);
+}
+
+/* ------------------------------------------------------------ 缩放手柄 */
+
+#grip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  z-index: 20;
+  background: linear-gradient(135deg, transparent 46%, rgba(255, 255, 255, 0.28) 50%, transparent 54%),
+    linear-gradient(135deg, transparent 68%, rgba(255, 255, 255, 0.18) 72%, transparent 76%);
+}
+
+/* ------------------------------------------------------------------ 提示 */
+
+#toast {
+  position: absolute;
+  left: 50%;
+  bottom: 46px;
+  transform: translate(-50%, 6px);
+  max-width: 84%;
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: rgba(22, 23, 29, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  color: var(--fg);
+  font-size: 11.5px;
+  line-height: 1.5;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s, transform 0.18s;
+  z-index: 60;
+}
+
+#toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* ------------------------------------------------- 沉浸式净屏（默认）
+   标题栏、底部控制条、地址栏彻底隐藏：不淡出、不浮现，画面永远纯净，
+   防止误触。功能入口仍在 DOM，但不可见也不可点（防误触优先）。 */
+
+#app #titlebar,
+#app #controls,
+#app #urlbar,
+#app #grip {
+  position: absolute;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  display: none !important;
+}
+
+/* titlebar 保留在布局里：虽然不可见但带 -webkit-app-region:drag，
+   保留它即可让视频窗体顶部一条仍可长按拖动（display:none 会杀掉拖动）。
+   只去掉 titlebar 的 display，其余仍隐藏。 */
+#app #titlebar {
+  display: block !important;
+  z-index: 2;
+}
+
+/* 兼容性兜底：任何显隐类都不要把它们带出来 */
+#app #titlebar.show,
+#app #controls:hover,
+body.ui #app #urlbar,
+#app #urlbar:hover,
+#app #urlbar:focus-within {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  display: none !important;
+}
+
+/* ---------------------------------------------------------------- 小窗口
+   浮窗最小能缩到 240×150：先让出品牌字，再让出时间，按钮永远留着。 */
+
+@media (max-width: 460px) {
+  .brand .name {
+    display: none;
+  }
+
+  .vtitle:not(:empty) {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .sel {
+    max-width: 96px;
+  }
+}
+
+@media (max-width: 330px) {
+  .time,
+  .tb-sep {
+    display: none;
+  }
+
+  #controls {
+    gap: 6px;
+  }
+}
+
+/* 系统里关了动画的用户：不做位移和淡入 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
+}

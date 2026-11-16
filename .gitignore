@@ -1,0 +1,10 @@
+node_modules/
+data/
+dist/
+build/
+*.log
+*.7z
+*.asar
+*.zip
+*.exe
+ui-shots/

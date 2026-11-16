@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: file:">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>胡桃助手 · 启动器</title>
+<link rel="stylesheet" href="console.css">
+</head>
+<body>
+<div id="shell">
+  <div class="workspace">
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <button id="btnBg" class="ghost bg-btn" type="button">更换背景图</button>
+      </div>
+      <!-- 右侧 148px 交给系统窗口控制按钮（WCO） -->
+      <div class="topbar-right" aria-hidden="true"></div>
+    </header>
+
+    <!-- 未提权提示（UIPI）：游戏在前台时组合键收不到，仅未提权时出现 -->
+    <div class="global-notes">
+      <div id="elevBanner" class="elev-banner" hidden>
+        <span id="elevBannerText"></span>
+        <button id="btnElevate" class="tiny elevate-btn" type="button">以管理员身份重启</button>
+      </div>
+    </div>
+
+    <main class="content">
+
+      <!-- 左栏：视频跟跑 -->
+      <section class="pane pane-home">
+        <div class="card group-card">
+          <div class="card-head">
+            <svg class="icon"><use href="#i-video"></use></svg>
+            <h2>视频跟跑</h2>
+            <p class="run-tip">粘贴链接后打开视频需登录 B 站账号，否则后面的功能无法运行</p>
+          </div>
+          <div class="card-body">
+            <input id="url" class="txt" type="text" spellcheck="false"
+                   placeholder="粘贴 B 站视频链接">
+            <div class="row launch-row">
+              <span class="part-prefix">分 P ·</span>
+              <!-- 原生 select 只作数据源：Windows 下它的展开列表由系统绘制，白底方块，
+                   没法做液态玻璃。真正给用户点的是下面这套 .dd 玻璃下拉。 -->
+              <div id="partDD" class="dd">
+                <select id="part" class="sel sel-src" tabindex="-1" aria-hidden="true"></select>
+                <button id="partBtnG" class="dd-btn" type="button" title="分 P">
+                  <span id="partLabelG" class="dd-label">分 P</span>
+                  <span class="dd-caret" aria-hidden="true">▾</span>
+                </button>
+                <div id="partMenuG" class="dd-menu" role="listbox" hidden></div>
+              </div>
+              <button id="btnLaunch" class="primary" type="button">启动跟跑</button>
+            </div>
+            <div class="meta" id="videoMeta"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右栏：全局快捷键 -->
+      <section class="pane pane-hotkeys">
+        <div class="card group-card">
+          <div class="card-head hk-head">
+            <h3>全局快捷键</h3>
+            <div class="hk-head-right">
+              <div id="hkState" class="hk-state"></div>
+              <button id="btnResetHk" class="ghost small" type="button">恢复默认</button>
+            </div>
+          </div>
+          <div class="card-body hk-body">
+            <div id="hkList" class="hk-list"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- 免费开源声明（醒目红字） -->
+    <div class="free-banner" id="freeBanner">
+      <span class="free-banner-text">本产品免费且开源，如果你是付费使用，请立即退款。</span>
+    </div>
+
+    <div id="toast"></div>
+  </div>
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-video" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></symbol>
+  </defs>
+</svg>
+
+<script src="console.js"></script>
+</body>
+</html>

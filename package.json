@@ -1,0 +1,27 @@
+{
+  "name": "genshin-route-buddy",
+  "productName": "胡桃助手",
+  "version": "0.2.5",
+  "description": "胡桃助手：B 站攻略视频悬浮窗，置顶于原神之上，全局热键控制播放",
+  "main": "src/main.js",
+  "author": "FinalLawer",
+  "license": "MIT",
+  "homepage": "https://github.com/FL-S-png/hutao-assistant",
+  "dependencies": {
+    "uiohook-napi": "^1.5.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FL-S-png/hutao-assistant.git"
+  },
+  "keywords": [
+    "genshin",
+    "electron",
+    "overlay",
+    "bilibili",
+    "hotkey"
+  ],
+  "scripts": {
+    "start": "electron ."
+  }
+}
